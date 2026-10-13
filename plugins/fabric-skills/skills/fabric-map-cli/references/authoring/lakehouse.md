@@ -121,8 +121,8 @@ inspection as incomplete rather than treating the source as validated.
 - Check magic bytes, **archive version**, section
   offsets/lengths, compression, and the header tile type. This is independent
   of the Map schema version. Use a reader compatible with the archive version
-  and compression. Require MVT for the vector path; raster PMTiles
-  must use a separately validated imagery path, not vector styling.
+  and compression. Require MVT for the vector path; route raster PMTiles to
+  [Raster PMTiles](#raster-pmtiles), not vector styling or COG validation.
 - Validate longitude/latitude bounds, center and zoom range. Check metadata
   against the header and report inconsistencies. An archive's suggested center
   zoom is not an instruction to reset an existing Map camera.
@@ -148,6 +148,23 @@ inspection as incomplete rather than treating the source as validated.
   minimum into `options.minZoom` and accidentally hide a requested layer.
   Verify the actual runtime at the saved regional view; report unavailable
   detail rather than zooming to the wrong region or silently regenerating tiles.
+
+### Raster PMTiles
+
+- Validate PMTiles magic bytes, archive version, section offsets/lengths,
+  compression, and header tile type with a compatible reader. Require a
+  supported raster image tile type (such as PNG or JPEG), not MVT; decode
+  sampled tiles to verify the image encoding matches the header and report
+  the sample scope. Unknown or unsupported types block writing.
+- Validate longitude/latitude bounds, center, zoom range, and metadata/header
+  consistency. Use the imagery bounds and intended focus for the opening view;
+  do not reset an existing camera from the archive's suggested center.
+- Use imagery settings only: opacity, visibility, and order. Do not require
+  `vector_layers`, vector fields, or geometry; attribute filtering, labels,
+  tooltips, heatmaps, and extrusions do not apply.
+- Do **not** apply the COG checks below: TIFF structure, EPSG:3857 metadata,
+  RGB/RGBA band counts, and TIFF display-band types are not PMTiles validation.
+  Continue to **Before writing** after this path succeeds.
 
 ### Cloud Optimized GeoTIFF
 
@@ -221,6 +238,7 @@ every string identifier. Preserve existing aliases during unrelated edits.
 |---|---|---|
 | GeoJSON | `type: "geojson"`, exact `Files/...geojson` path | `sourceId`, `options.type: "vector"`; no `sourceLayer` |
 | Vector PMTiles | `type: "pmtiles"`, exact `Files/...pmtiles` path | `sourceLayerId: "<real-internal-id>"` **and** `options.sourceLayer` with the same value; `options.type: "vector"` |
+| Raster PMTiles | `type: "pmtiles"`, exact `Files/...pmtiles` path | `sourceId`, `options.type: "raster"`, `options.opacity`; no vector source layer |
 | COG | `type: "cog"`, exact `Files/...tif` or `.tiff` path | `sourceId`, `options.type: "raster"`, `options.opacity`; no vector source layer |
 
 `cog` is the source discriminator, not `raster`, `tiff`, or `geotiff`; `raster`
